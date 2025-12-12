@@ -3,32 +3,38 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { SignupCard } from "@/components/auth/signup-card"
+import { useAuthStore } from "@/stores/auth-store"
 
 export default function SignupPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
+  const { signup } = useAuthStore()
 
   const handleCreateOrg = async (data: { name: string; email: string; password: string; orgName: string }) => {
     setIsLoading(true)
-    // TODO: Integrate with your backend
-    console.log("Creating organization:", data)
-    await new Promise((r) => setTimeout(r, 1000))
-    setIsLoading(false)
-    router.push("/admin")
+    try {
+      await signup({ name: data.name, email: data.email, password: data.password })
+      router.push("/login")
+    } catch (error) {
+      console.error("Signup failed:", error)
+      setIsLoading(false)
+    }
   }
 
   const handleJoinOrg = async (data: { name: string; email: string; password: string; orgId: string }) => {
     setIsLoading(true)
-    // TODO: Integrate with your backend
-    console.log("Joining organization:", data)
-    await new Promise((r) => setTimeout(r, 1000))
-    setIsLoading(false)
-    router.push("/pending-approval")
+    try {
+      await signup({ name: data.name, email: data.email, password: data.password })
+      router.push("/login")
+    } catch (error) {
+      console.error("Signup failed:", error)
+      setIsLoading(false)
+    }
   }
 
   const handleGoogleSignUp = async () => {
-    // TODO: Integrate with your Google OAuth provider
-    console.log("Google sign-up clicked")
+    const { authApi } = await import("@/lib/api/auth")
+    authApi.googleAuth()
   }
 
   return (

@@ -10,6 +10,7 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (credentials: LoginCredentials) => Promise<void>;
+  signup: (credentials: { email: string; password: string; name: string }) => Promise<void>;
   logout: () => void;
   setUser: (user: User | null) => void;
   setToken: (token: string | null) => void;
@@ -28,6 +29,16 @@ export const useAuthStore = create<AuthState>()(
           const { token, user } = await authApi.login(credentials);
           localStorage.setItem('token', token);
           set({ user, token, isAuthenticated: true, isLoading: false });
+        } catch (error) {
+          set({ isLoading: false });
+          throw error;
+        }
+      },
+      signup: async (credentials) => {
+        set({ isLoading: true });
+        try {
+          await authApi.signup(credentials);
+          set({ isLoading: false });
         } catch (error) {
           set({ isLoading: false });
           throw error;
