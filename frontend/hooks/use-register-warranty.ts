@@ -7,12 +7,10 @@ interface UseRegisterWarrantyOptions {
 }
 
 export function useRegisterWarranty(options?: UseRegisterWarrantyOptions) {
-  return useMutation(
-    (payload: { asset_id: string; asset_name: string; user_id: string }) =>
+  return useMutation({
+    mutationFn: (payload: { asset_id: string; asset_name: string; user_id: string }) =>
       warrantiesApi.registerWarranty(payload),
-    {
-      onSuccess: options?.onSuccess,
-      onError: options?.onError,
-    }
-  );
+    onSuccess: options?.onSuccess,
+    onError: options?.onError,
+  });
 }

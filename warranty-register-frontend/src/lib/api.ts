@@ -16,14 +16,10 @@ export async function registerUser({ username, password }: { username: string; p
 }
 
 export async function loginUser({ username, password }: { username: string; password: string }): Promise<LoginResult> {
-  const body = new URLSearchParams()
-  body.append('username', username)
-  body.append('password', password)
-
   const res = await fetch(`${API_URL}/login`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: body.toString()
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password })
   })
   const data = await res.json()
   if (!res.ok) throw new Error((data && data.detail) || JSON.stringify(data) || 'Login failed')

@@ -46,6 +46,11 @@ class UserCreate(BaseModel):
     username: str
     password: str
 
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
 # Custom handler for empty or invalid request body
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
@@ -85,11 +90,10 @@ def register_warranty(warranty: Warranty):
 
 
 from fastapi import Depends
-from fastapi.security import OAuth2PasswordRequestForm
 
 @app.post("/login")
-def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    user = authenticate_user(form_data.username, form_data.password)
+def login(request: LoginRequest):
+    user = authenticate_user(request.username, request.password)
     if not user:
         raise HTTPException(status_code=401, detail="Incorrect username or password")
     access_token = create_access_token(data={"sub": user["username"]})

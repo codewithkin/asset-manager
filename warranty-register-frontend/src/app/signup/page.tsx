@@ -10,7 +10,8 @@ export default function SignupPage() {
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
 
-  const mutation = useMutation(registerUser, {
+  const mutation = useMutation({
+    mutationFn: registerUser,
     onSuccess: () => router.push('/login')
   })
 
@@ -29,8 +30,8 @@ export default function SignupPage() {
         <label>Password</label>
         <input type="password" value={password} onChange={e => setPassword(e.target.value)} />
 
-        <button type="submit" disabled={mutation.isLoading}>
-          {mutation.isLoading ? 'Creating...' : 'Sign Up'}
+        <button type="submit" disabled={mutation.isPending}>
+          {mutation.isPending ? 'Creating...' : 'Sign Up'}
         </button>
       </form>
 
