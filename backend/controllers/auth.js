@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const { jwtSecret } = require('../config/auth');
 const userModel = require('../models/user');
-const { comparePassword } = require('../utils/password');
+const { comparePassword, hashPassword } = require('../utils/password');
 const logger = require('../utils/logger');
 
 function generateToken(user) {
@@ -198,4 +198,50 @@ async function completeGoogleAuth(req, res) {
   }
 }
 
-module.exports = { generateToken, login, googleCallback, completeGoogleAuth };
+async function signup(req, res) {
+  try {
+    const { email, password, name } = req.body;
+    logger.info('POST /api/auth/signup', `Signup attempt for email: ${email}`);
+
+    if (!email || !password || !name) {
+      logger.warn('POST /api/auth/signup', `Missing required fields for email: ${email}`);
+      return res.status(400).json({ error: 'Email, password, and name are required' });
+    }
+
+    const existingUser = await userModel.findByEmail(email);
+    if (existingUser) {
+      logger.warn('POST /api/auth/signup', `Signup failed: user already exists for email: ${email}`);
+      return res.status(409).json({ error: 'User already exists' });
+    }
+
+    const hashedPassword = await hashPassword(password);
+
+    const newUser = await userModel.create({
+      email,
+      name,
+      role: 'user',
+      organizationId: null,
+      status: 'pending',
+      password: hashedPassword,
+    });
+
+    logger.info('POST /api/auth/signup', `New user created: ${newUser.id} (${email}), status: pending`);
+
+    res.status(201).json({
+      success: true,
+      message: 'User created successfully. Please log in.',
+      user: {
+        id: newUser.id,
+        email: newUser.email,
+        name: newUser.name,
+        role: newUser.role,
+        status: newUser.status,
+      }
+    });
+  } catch (error) {
+    logger.error('POST /api/auth/signup', `Error during signup: ${error.message}`, error);
+    res.status(500).json({ error: error.message });
+  }
+}
+
+module.exports = { generateToken, login, signup, googleCallback, completeGoogleAuth };
