@@ -9,6 +9,7 @@ __pycache__/
 venv/
 ENV/
 env/
+.venv
 
 # Distribution / packaging
 .Python
@@ -50,10 +51,35 @@ htmlcov/
 # Sensitive files
 .env.local
 .env.*.local
+/.env
 
 # Misc
 *.sqlite3
 *.db
+
+# Python tooling
+.mypy_cache/
+.pytest_cache/
+.cache/
+.ruff_cache/
+pip-wheel-metadata/
+__pypackages__/
+
+# Pipenv / Poetry
+Pipfile.lock
+poetry.lock
+
+# pyenv
+.python-version
+
+# Windows
+Thumbs.db
+ehthumbs.db
+
+# Editor backups
+*~
+.swp
+.swo
 
 # Uvicorn/reload
 reload_

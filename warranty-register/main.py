@@ -101,7 +101,9 @@ def register(user: UserCreate):
     # create user in DB
     created = create_user(user.username, user.password)
     if not created:
-        raise HTTPException(status_code=400, detail="Unable to create user (may already exist)")
+        raise HTTPException(status_code=500, detail="Unable to create user")
+    if isinstance(created, dict) and created.get("error") == "duplicate":
+        raise HTTPException(status_code=409, detail="Username already exists")
     return {"success": True, "user": {"id": created.get("id"), "username": created.get("username")}}
 
 @app.get("/warranties")

@@ -4,6 +4,7 @@ from jose import jwt
 from passlib.context import CryptContext
 from dotenv import load_dotenv
 import psycopg2
+from psycopg2.errors import UniqueViolation
 from psycopg2.extras import RealDictCursor
 
 # Load env
@@ -82,5 +83,12 @@ def create_user(username: str, password: str):
             user = cursor.fetchone()
             conn.commit()
             return user
+    except UniqueViolation:
+        # Username already exists
+        if conn:
+            conn.rollback()
+        return {"error": "duplicate"}
     except Exception:
+        if conn:
+            conn.rollback()
         return None
