@@ -10,6 +10,7 @@ import { PackageIcon } from "@/components/icons"
 import { useAssets } from "@/hooks/use-assets"
 import { useCategories } from "@/hooks/use-categories"
 import { useDepartments } from "@/hooks/use-departments"
+import { useRegisterWarranty } from "@/hooks/use-register-warranty"
 import { useAuthContext } from "@/contexts/auth-context"
 import type { Asset } from "@/types"
 
@@ -19,10 +20,38 @@ export function MyAssetsSection() {
   const { categories } = useCategories()
   const { departments } = useDepartments()
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [registeredWarrantyId, setRegisteredWarrantyId] = useState<string | null>(null)
+  const [assetStates, setAssetStates] = useState<Record<string, { isLoading: boolean; isSuccess: boolean; error: string | null }>>({})
+
+  const { mutate: registerWarranty } = useRegisterWarranty()
 
   const myAssets = assets.filter((a) => a.createdBy === user?.id)
   const getCategoryName = (id: string) => categories.find((c) => c.id === id)?.name || "Unknown"
   const getDepartmentName = (id: string) => departments.find((d) => d.id === id)?.name || "Unknown"
+
+  const handleRegisterWarranty = (asset: Asset) => {
+    if (!user?.id) return
+
+    setAssetStates(prev => ({ ...prev, [asset.id]: { isLoading: true, isSuccess: false, error: null } }))
+
+    registerWarranty(
+      {
+        asset_id: asset.id,
+        asset_name: asset.name,
+        user_id: user.id,
+      },
+      {
+        onSuccess: () => {
+          setRegisteredWarrantyId(asset.id)
+          setAssetStates(prev => ({ ...prev, [asset.id]: { isLoading: false, isSuccess: true, error: null } }))
+        },
+        onError: (error: any) => {
+          const errorMsg = error?.response?.data?.detail || error?.message || 'Failed to register warranty'
+          setAssetStates(prev => ({ ...prev, [asset.id]: { isLoading: false, isSuccess: false, error: errorMsg } }))
+        }
+      }
+    )
+  }
 
   const columns = [
     {
@@ -44,6 +73,31 @@ export function MyAssetsSection() {
       key: "datePurchased",
       label: "Purchased",
       render: (item: Asset) => new Date(item.datePurchased).toLocaleDateString(),
+    },
+    {
+      key: "warranty",
+      label: "Warranty",
+      render: (item: Asset) => {
+        const state = assetStates[item.id] || { isLoading: false, isSuccess: false, error: null }
+        const isRegistered = registeredWarrantyId === item.id || item.warrantyRegistered
+
+        if (isRegistered) {
+          return <Badge className="bg-green-100 text-green-800">Warranty Registered</Badge>
+        }
+
+        return (
+          <div className="flex flex-col gap-1">
+            <button
+              onClick={() => handleRegisterWarranty(item)}
+              disabled={state.isLoading}
+              className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {state.isLoading ? "Registering..." : "Register Warranty"}
+            </button>
+            {state.error && <span className="text-xs text-red-600">{state.error}</span>}
+          </div>
+        )
+      },
     },
   ]
 

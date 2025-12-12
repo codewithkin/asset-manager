@@ -41,4 +41,5 @@ export interface Asset {
   cost: number
   createdBy: string
   createdAt: Date
+  warrantyRegistered?: boolean
 }
