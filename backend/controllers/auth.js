@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const { jwtSecret } = require('../config/auth');
 const userModel = require('../models/user');
 const { comparePassword } = require('../utils/password');
+const logger = require('../utils/logger');
 
 function generateToken(user) {
   return jwt.sign(
@@ -18,18 +19,23 @@ function generateTempToken(data) {
 async function login(req, res) {
   try {
     const { email, password } = req.body;
+    logger.info('POST /api/auth/login', `Login attempt for email: ${email}`);
+    
     const user = await userModel.findByEmail(email);
     
     if (!user) {
+      logger.warn('POST /api/auth/login', `Failed login: user not found for email: ${email}`);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
     if (!user.password_hash) {
+      logger.warn('POST /api/auth/login', `Failed login: no password set for email: ${email}`);
       return res.status(401).json({ error: 'Password not set. Please use Google OAuth.' });
     }
     
     const isValid = await comparePassword(password, user.password_hash);
     if (!isValid) {
+      logger.warn('POST /api/auth/login', `Failed login: invalid password for email: ${email}`);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
@@ -39,6 +45,8 @@ async function login(req, res) {
       role: user.role,
       organizationId: user.organization_id,
     });
+    
+    logger.info('POST /api/auth/login', `Successful login for user: ${user.id} (${email})`);
     
     res.json({ 
       token, 
@@ -52,6 +60,7 @@ async function login(req, res) {
       }
     });
   } catch (error) {
+    logger.error('POST /api/auth/login', `Unexpected error during login: ${error.message}`, error);
     res.status(500).json({ error: error.message });
   }
 }
@@ -60,8 +69,10 @@ async function googleCallback(req, res) {
   try {
     const user = req.user;
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    logger.info('GET /api/auth/google/callback', `Google callback for user: ${user?.email}`);
     
     if (!user || !user.email) {
+      logger.error('GET /api/auth/google/callback', 'User not found in callback');
       return res.redirect(`${frontendUrl}/auth/google/select?error=user_not_found`);
     }
     
@@ -74,6 +85,8 @@ async function googleCallback(req, res) {
         role: dbUser.role,
         organizationId: dbUser.organization_id,
       });
+      
+      logger.info('GET /api/auth/google/callback', `Existing user authenticated: ${dbUser.id} (${dbUser.email})`);
       
       return res.redirect(
         `${frontendUrl}/auth/google/callback?token=${token}&user=${encodeURIComponent(JSON.stringify({
@@ -93,8 +106,11 @@ async function googleCallback(req, res) {
       googleId: user.id,
     });
     
+    logger.info('GET /api/auth/google/callback', `New user redirected to selection: ${user.email}`);
+    
     res.redirect(`${frontendUrl}/auth/google/select?token=${tempToken}`);
   } catch (error) {
+    logger.error('GET /api/auth/google/callback', `Error in google callback: ${error.message}`, error);
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     res.redirect(`${frontendUrl}/login?error=${encodeURIComponent(error.message)}`);
   }
@@ -103,11 +119,13 @@ async function googleCallback(req, res) {
 async function completeGoogleAuth(req, res) {
   try {
     const { tempToken, role, organizationId, organizationName } = req.body;
+    logger.info('POST /api/auth/google/complete', `Complete Google auth with role: ${role}`);
     
     let tempData;
     try {
       tempData = jwt.verify(tempToken, jwtSecret);
     } catch (error) {
+      logger.warn('POST /api/auth/google/complete', `Invalid or expired temp token`);
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
     
@@ -135,6 +153,8 @@ async function completeGoogleAuth(req, res) {
           status: 'approved',
           password: null,
         });
+        
+        logger.info('POST /api/auth/google/complete', `New admin user created: ${user.id} (${email}) for org: ${org.id}`);
       } else if (role === 'user' && organizationId) {
         user = await userModel.create({
           email,
@@ -144,9 +164,14 @@ async function completeGoogleAuth(req, res) {
           status: 'pending',
           password: null,
         });
+        
+        logger.info('POST /api/auth/google/complete', `New regular user created: ${user.id} (${email}), status: pending`);
       } else {
+        logger.warn('POST /api/auth/google/complete', `Invalid role or organization for user: ${email}`);
         return res.status(400).json({ error: 'Invalid role or organization' });
       }
+    } else {
+      logger.info('POST /api/auth/google/complete', `Existing user authenticated: ${user.id} (${email})`);
     }
     
     const token = generateToken({
@@ -168,6 +193,7 @@ async function completeGoogleAuth(req, res) {
       }
     });
   } catch (error) {
+    logger.error('POST /api/auth/google/complete', `Error completing Google auth: ${error.message}`, error);
     res.status(500).json({ error: error.message });
   }
 }
